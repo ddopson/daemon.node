@@ -27,6 +27,24 @@
 using namespace v8;
 using namespace node;
 
+static Handle<Value> Fork(const Arguments& args) {
+  HandleScope scope;
+  pid_t pid = fork();
+  if (pid == 0) {
+    // Child process: We need to tell libev that we are forking because
+    // kqueue can't deal with this gracefully.
+    //
+    // See: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#code_ev_fork_code_the_audacity_to_re
+    ev_default_fork();
+  }
+  return scope.Close(Integer::New(pid));
+}
+
+static Handle<Value> GetPid(const Arguments& args) {
+  return Integer::New(getpid());
+}
+
+
 //
 // Go through special routines to become a daemon.
 // if successful, returns daemon pid
@@ -195,6 +213,8 @@ extern "C" void init(Handle<Object> target) {
   HandleScope scope;
   
   NODE_SET_METHOD(target, "start", Start);
+  NODE_SET_METHOD(target, "fork", Fork);
+  NODE_SET_METHOD(target, "getpid", GetPid);
   NODE_SET_METHOD(target, "lock", LockD);
   NODE_SET_METHOD(target, "setsid", SetSid);
   NODE_SET_METHOD(target, "chroot", Chroot);
